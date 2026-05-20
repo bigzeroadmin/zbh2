@@ -1,0 +1,43 @@
+:root {
+  --primary: #4da6e8;
+  --primary-light: #e8f4fd;
+  --primary-dark: #2b7bbf;
+  --bg: #f0f7ff;
+}
+
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+body {
+  background: var(--bg);
+  min-height: 100vh;
+}
+
+.portal-hero {
+  background: linear-gradient(135deg, #e8f4fd 0%, #b8ddf5 100%);
+  padding: 60px 24px;
+  text-align: center;
+}
+
+.portal-hero h1 {
+  font-size: 2rem;
+  color: #1a3a5c;
+  margin-bottom: 12px;
+}
+
+.portal-hero p {
+  font-size: 1.1rem;
+  color: #4a7a9b;
+}
+
+.card-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  gap: 20px;
+  padding: 24px;
+  max-width: 1200px;
+  margin: 0 auto;
+}

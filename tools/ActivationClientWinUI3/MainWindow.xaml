@@ -1,0 +1,61 @@
+<Window
+    x:Class="ActivationClientDemo.MainWindow"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+    xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+    mc:Ignorable="d">
+
+    <Grid Padding="28"
+          Background="{ThemeResource ApplicationPageBackgroundThemeBrush}">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="*"/>
+        </Grid.RowDefinitions>
+
+        <StackPanel Grid.Row="0" Spacing="6" Margin="0,0,0,16">
+            <TextBlock Text="KMS 激活演示客户端" Style="{StaticResource TitleTextBlockStyle}" FontWeight="SemiBold"/>
+            <TextBlock Text="演示用途：模拟 KMS 客户端流程，不进行真实服务器校验与系统激活。" 
+                       Foreground="{ThemeResource TextFillColorSecondaryBrush}" TextWrapping="Wrap" FontSize="13"/>
+        </StackPanel>
+
+        <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto">
+            <StackPanel Spacing="20" MaxWidth="420" HorizontalAlignment="Left">
+
+                <!-- 登录 -->
+                <Border Background="{ThemeResource CardBackgroundFillColorDefaultBrush}" 
+                        BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}" BorderThickness="1" 
+                        CornerRadius="{StaticResource ControlCornerRadius}" Padding="20">
+                    <StackPanel Spacing="12">
+                        <TextBlock Text="用户登录" Style="{StaticResource SubtitleTextBlockStyle}"/>
+                        <TextBox x:Name="UserNameBox" Header="用户名" PlaceholderText="任意非空用户名"/>
+                        <PasswordBox x:Name="PasswordBox" Header="密码" PlaceholderText="任意非空密码"/>
+                        <Button x:Name="LoginButton" Content="登录" Style="{StaticResource AccentButtonStyle}" 
+                                Click="LoginButton_Click" HorizontalAlignment="Stretch"/>
+                        <TextBlock x:Name="LoginHint" Text="登录成功后，下方激活按钮将可用。" 
+                                   FontSize="12" Foreground="{ThemeResource TextFillColorSecondaryBrush}" TextWrapping="Wrap"/>
+                    </StackPanel>
+                </Border>
+
+                <!-- KMS 演示激活 -->
+                <Border Background="{ThemeResource CardBackgroundFillColorDefaultBrush}" 
+                        BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}" BorderThickness="1" 
+                        CornerRadius="{StaticResource ControlCornerRadius}" Padding="20">
+                    <StackPanel Spacing="12">
+                        <TextBlock Text="KMS 激活（演示）" Style="{StaticResource SubtitleTextBlockStyle}"/>
+                        <TextBlock TextWrapping="Wrap" FontSize="12" 
+                                   Foreground="{ThemeResource TextFillColorSecondaryBrush}"
+                                   Text="模拟向本机 KMS 主机请求激活：点击后仅显示成功反馈，不会调用 slmgr /ato 或联网。"/>
+                        <Button x:Name="ActivateWindowsButton" Content="激活 Windows" IsEnabled="False" 
+                                Click="ActivateWindowsButton_Click" HorizontalAlignment="Stretch"/>
+                        <Button x:Name="ActivateOfficeButton" Content="激活 Microsoft Office" IsEnabled="False" 
+                                Click="ActivateOfficeButton_Click" HorizontalAlignment="Stretch"/>
+                    </StackPanel>
+                </Border>
+
+                <TextBlock x:Name="StatusText" Text="" FontSize="13" TextWrapping="Wrap" 
+                           Foreground="{ThemeResource TextFillColorSecondaryBrush}"/>
+            </StackPanel>
+        </ScrollViewer>
+    </Grid>
+</Window>
