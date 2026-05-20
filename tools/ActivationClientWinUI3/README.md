@@ -8,7 +8,8 @@
 - [.NET 8 SDK](https://dotnet.microsoft.com/download/dotnet/8.0)
 - 建议安装 [Visual Studio 2022](https://visualstudio.microsoft.com/) 并勾选「**使用 C++ 的桌面开发**」与「**.NET 桌面开发**」（用于 Windows App SDK 本机工具链）
 
-> 必须在 **Windows** 上编译；macOS / Linux 无法构建 WinUI 3。
+> 必须在 **Windows** 上编译；macOS / Linux 无法构建 WinUI 3。  
+> 工程已固定 **x64 / win-x64**（与 `WindowsAppSDKSelfContained` 自包含模式兼容，避免 AnyCPU 还原失败）。
 
 ## 编译调试
 

@@ -64,8 +64,8 @@ jobs:
       - name: Publish (自包含目录)
         working-directory: tools/ActivationClientWinUI3
         run: |
-          dotnet restore
-          dotnet publish -c Release -r win-x64 --self-contained true
+          dotnet restore -r win-x64
+          dotnet publish -c Release -r win-x64 --self-contained true /p:Platform=x64
 
       - name: Zip publish output
         shell: pwsh
