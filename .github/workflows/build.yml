@@ -61,15 +61,24 @@ jobs:
         with:
           dotnet-version: "8.0.x"
 
-      - name: Restore and publish (single-file exe)
+      - name: Publish (自包含目录)
         working-directory: tools/ActivationClientWinUI3
         run: |
           dotnet restore
-          dotnet publish -c Release -r win-x64 --self-contained true /p:PublishSingleFile=true /p:IncludeNativeLibrariesForSelfExtract=true /p:EnableCompressionInSingleFile=true
+          dotnet publish -c Release -r win-x64 --self-contained true
 
-      - name: Upload ActivationClientDemo
+      - name: Zip publish output
+        shell: pwsh
+        run: |
+          $src = Join-Path $env:GITHUB_WORKSPACE "tools/ActivationClientWinUI3/bin/Release/net8.0-windows10.0.19041.0/win-x64/publish"
+          $zip = Join-Path $env:GITHUB_WORKSPACE "ActivationClientDemo-win-x64.zip"
+          if (-not (Test-Path $src)) { throw "Publish output not found: $src" }
+          if (Test-Path $zip) { Remove-Item $zip -Force }
+          Compress-Archive -Path (Join-Path $src '*') -DestinationPath $zip -CompressionLevel Optimal
+
+      - name: Upload ActivationClientDemo (zip)
         uses: actions/upload-artifact@v4
         with:
           name: ActivationClientDemo-win-x64
-          path: tools/ActivationClientWinUI3/bin/Release/net8.0-windows10.0.19041.0/win-x64/publish/
-          if-no-files-found: warn
+          path: ActivationClientDemo-win-x64.zip
+          if-no-files-found: error

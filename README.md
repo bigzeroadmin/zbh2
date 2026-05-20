@@ -42,7 +42,7 @@ pnpm dev
 推送至 `main` / `master` 分支或提交 PR 时，[GitHub Actions](https://github.com/bigzeroadmin/zbh2/actions) 会自动执行：
 
 - **Node.js**：安装依赖并执行 `pnpm build`，上传 `web-dist` 与 `server-dist` 构建产物
-- **Windows**：编译并发布 WinUI3 演示激活客户端（单文件），上传 `ActivationClientDemo-win-x64` 产物
+- **Windows**：`dotnet publish` 自包含目录，打包为 `ActivationClientDemo-win-x64.zip` 上传
 
 ## 项目结构
 

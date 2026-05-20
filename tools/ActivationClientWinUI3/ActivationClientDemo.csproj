@@ -21,12 +21,4 @@
   <ItemGroup>
     <PackageReference Include="Microsoft.WindowsAppSDK" Version="1.5.240802000" />
   </ItemGroup>
-
-  <!-- 发布为单文件自包含 exe（WinUI 仍可能解压部分本机资源到临时目录，属正常行为） -->
-  <PropertyGroup Condition="'$(Configuration)'=='Release'">
-    <PublishSingleFile>true</PublishSingleFile>
-    <SelfContained>true</SelfContained>
-    <IncludeNativeLibrariesForSelfExtract>true</IncludeNativeLibrariesForSelfExtract>
-    <EnableCompressionInSingleFile>true</EnableCompressionInSingleFile>
-  </PropertyGroup>
 </Project>

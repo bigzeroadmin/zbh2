@@ -19,19 +19,16 @@ dotnet build -c Debug
 dotnet run -c Debug
 ```
 
-## 发布为单个 exe（自包含）
+## 发布（自包含目录，可再打成 zip）
 
 ```powershell
 cd tools\ActivationClientWinUI3
-dotnet publish -c Release -r win-x64 --self-contained true `
-  /p:PublishSingleFile=true `
-  /p:IncludeNativeLibrariesForSelfExtract=true `
-  /p:EnableCompressionInSingleFile=true
+dotnet publish -c Release -r win-x64 --self-contained true
 ```
 
-输出目录：`bin\Release\net8.0-windows10.0.19041.0\win-x64\publish\ActivationClientDemo.exe`
+输出目录：`bin\Release\net8.0-windows10.0.19041.0\win-x64\publish\`（内含 `ActivationClientDemo.exe` 及依赖 DLL，可直接复制或压缩分发）。
 
-说明：WinUI 3 单文件发布时，运行期可能将部分本机库解压到临时目录，属 .NET 单文件行为，仍为一个主 `exe` 入口。
+> WinUI 3 与 `PublishSingleFile` 组合需开启 MSIX 工具链；本演示项目采用**文件夹发布**，CI 中会将 `publish` 目录打成 zip 上传。
 
 ## 演示逻辑
 
