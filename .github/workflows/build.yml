@@ -60,6 +60,10 @@ jobs:
         uses: actions/setup-dotnet@v4
         with:
           dotnet-version: "8.0.x"
+          global-json-file: global.json
+
+      - name: Verify SDK version
+        run: dotnet --version
 
       - name: Publish (自包含目录)
         working-directory: tools/ActivationClientWinUI3
