@@ -42,7 +42,7 @@ pnpm dev
 推送至 `main` / `master` 分支或提交 PR 时，[GitHub Actions](https://github.com/bigzeroadmin/zbh2/actions) 会自动执行：
 
 - **Node.js**：安装依赖并执行 `pnpm build`，上传 `web-dist` 与 `server-dist` 构建产物
-- **Windows**：使用仓库根目录 [`global.json`](global.json) 固定 **.NET 8 SDK**（避免 runner 默认 .NET 10 与 WinUI / `win10-*` RID 不兼容），再编译 WinUI3 演示客户端并上传 `ActivationClientDemo-win-x64.zip`
+- **Windows**：编译 **WPF** 演示激活客户端（`tools/ActivationClientWpf`），自包含发布并上传 `ActivationClientDemo-win-x64.zip`
 
 ## 项目结构
 
@@ -63,7 +63,7 @@ pnpm dev
 ├── packages/
 │   └── shared/          # 前后端共享的 Zod Schema 和类型
 ├── tools/
-│   └── ActivationClientWinUI3/  # WinUI3 KMS 演示激活客户端（需在 Windows 上编译）
+│   └── ActivationClientWpf/     # WPF KMS 演示激活客户端（需在 Windows 上编译）
 └── data/                # SQLite 数据库和上传文件（已 gitignore）
 ```
 
