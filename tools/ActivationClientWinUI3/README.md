@@ -27,9 +27,9 @@ cd tools\ActivationClientWinUI3
 dotnet publish -c Release -r win-x64 --self-contained true
 ```
 
-输出目录：`bin\Release\net8.0-windows10.0.19041.0\win-x64\publish\`（内含 `ActivationClientDemo.exe` 及依赖 DLL，可直接复制或压缩分发）。
+输出目录：`bin\Release\net8.0-windows10.0.22621.0\win-x64\publish\`（内含 `ActivationClientDemo.exe` 及依赖 DLL，可直接复制或压缩分发）。
 
-> WinUI 3 与 `PublishSingleFile` 组合需开启 MSIX 工具链；本演示项目采用**文件夹发布**，CI 中会将 `publish` 目录打成 zip 上传。
+> .NET 8 使用可移植 RID（`win-x64`），勿使用已废弃的 `win10-x64`。参见 [NETSDK1083](https://learn.microsoft.com/dotnet/core/tools/sdk-errors/netsdk1083)。
 
 ## 演示逻辑
 

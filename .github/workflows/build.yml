@@ -74,7 +74,7 @@ jobs:
       - name: Zip publish output
         shell: pwsh
         run: |
-          $src = Join-Path $env:GITHUB_WORKSPACE "tools/ActivationClientWinUI3/bin/Release/net8.0-windows10.0.19041.0/win-x64/publish"
+          $src = Join-Path $env:GITHUB_WORKSPACE "tools/ActivationClientWinUI3/bin/Release/net8.0-windows10.0.22621.0/win-x64/publish"
           $zip = Join-Path $env:GITHUB_WORKSPACE "ActivationClientDemo-win-x64.zip"
           if (-not (Test-Path $src)) { throw "Publish output not found: $src" }
           if (Test-Path $zip) { Remove-Item $zip -Force }
