@@ -65,7 +65,7 @@ public sealed partial class MainWindow : Window
             Title = title,
             Content = new TextBlock { Text = message, TextWrapping = TextWrapping.Wrap, MaxWidth = 360 },
             CloseButtonText = "确定",
-            XamlRoot = XamlRoot,
+            XamlRoot = Content.XamlRoot,
             DefaultButton = ContentDialogButton.Close,
         };
         await dlg.ShowAsync();
