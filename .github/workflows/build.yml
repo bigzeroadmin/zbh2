@@ -69,7 +69,8 @@ jobs:
         working-directory: tools/ActivationClientWinUI3
         run: |
           dotnet restore -r win-x64
-          dotnet publish -c Release -r win-x64 --self-contained true /p:Platform=x64
+          dotnet publish -c Release -r win-x64 --self-contained true /p:Platform=x64 `
+            /p:GeneratePriFiles=false /p:AppxGeneratePriEnabled=false /p:AppxPackage=false
 
       - name: Zip publish output
         shell: pwsh

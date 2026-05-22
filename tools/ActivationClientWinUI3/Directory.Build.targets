@@ -1,0 +1,6 @@
+<Project>
+  <!-- GitHub Actions 等环境无 VS AppxPackage\Microsoft.Build.Packaging.Pri.Tasks.dll，解包应用无需 PRI -->
+  <Target Name="ExpandPriContent" />
+  <Target Name="_GenerateProjectPriConfigurationFiles" />
+  <Target Name="_GeneratePriFiles" />
+</Project>

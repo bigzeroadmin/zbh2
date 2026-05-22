@@ -14,6 +14,12 @@
     <UseWinUI>true</UseWinUI>
     <WindowsPackageType>None</WindowsPackageType>
     <EnableMsixTooling>false</EnableMsixTooling>
+    <!-- 解包应用 + CI 无 VS AppxPackage：关闭 PRI/MSIX 打包任务 -->
+    <GenerateAppxPackageOnBuild>false</GenerateAppxPackageOnBuild>
+    <AppxPackage>false</AppxPackage>
+    <GeneratePriFiles>false</GeneratePriFiles>
+    <AppxGeneratePriEnabled>false</AppxGeneratePriEnabled>
+    <EnableDefaultPriItems>false</EnableDefaultPriItems>
     <WindowsAppSDKSelfContained>true</WindowsAppSDKSelfContained>
     <AssemblyName>ActivationClientDemo</AssemblyName>
     <Description>KMS 激活机制演示客户端（无真实联网校验）</Description>
