@@ -67,6 +67,7 @@ const menuItems = [
   { key: '/admin/saas', label: <Link to="/admin/saas">云服务管理</Link>, icon: <CloudOutlined /> },
   { key: '/admin/tickets', label: <Link to="/admin/tickets">工单管理</Link>, icon: <MessageOutlined /> },
   { key: '/admin/faq', label: <Link to="/admin/faq">AI知识库</Link>, icon: <RobotOutlined /> },
+  { key: '/admin/model-config', label: <Link to="/admin/model-config">模型配置</Link>, icon: <ApiOutlined /> },
   { key: '/admin/reports', label: <Link to="/admin/reports">资产报表</Link>, icon: <BarChartOutlined /> },
   { key: '/admin/users', label: <Link to="/admin/users">用户管理</Link>, icon: <UserOutlined /> },
   {

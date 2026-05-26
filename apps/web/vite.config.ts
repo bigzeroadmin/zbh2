@@ -6,7 +6,20 @@ export default defineConfig({
   server: {
     port: 5273,
     proxy: {
-      '/api': 'http://localhost:7500',
+      '/api': {
+        target: 'http://localhost:7500',
+        changeOrigin: true,
+        // Support SSE streaming responses
+        configure: (proxy) => {
+          proxy.on('proxyRes', (proxyRes) => {
+            // Disable buffering for SSE responses
+            if (proxyRes.headers['content-type']?.includes('text/event-stream')) {
+              proxyRes.headers['cache-control'] = 'no-cache';
+              proxyRes.headers['x-accel-buffering'] = 'no';
+            }
+          });
+        },
+      },
     },
   },
 });

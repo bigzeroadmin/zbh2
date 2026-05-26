@@ -213,6 +213,40 @@ export const faqEntries = sqliteTable('faq_entries', {
   createdAt: text('created_at').notNull().$defaultFn(() => new Date().toISOString()),
 });
 
+// ─── AI 模型配置 ────────────────────────────────────
+export const aiModelConfigs = sqliteTable('ai_model_configs', {
+  id: integer('id').primaryKey({ autoIncrement: true }),
+  name: text('name').notNull(),
+  provider: text('provider', { enum: ['kimi', 'openai', 'deepseek', 'qwen', 'other'] }).notNull().default('kimi'),
+  model: text('model').notNull(),
+  apiKey: text('api_key').notNull(),
+  baseUrl: text('base_url').notNull().default('https://api.moonshot.cn/v1'),
+  systemPrompt: text('system_prompt').notNull().default(''),
+  temperature: real('temperature').notNull().default(0.7),
+  maxTokens: integer('max_tokens').notNull().default(2048),
+  isDefault: integer('is_default').notNull().default(0),
+  enabled: integer('enabled').notNull().default(1),
+  createdAt: text('created_at').notNull().$defaultFn(() => new Date().toISOString()),
+  updatedAt: text('updated_at').notNull().$defaultFn(() => new Date().toISOString()),
+});
+
+// ─── AI 对话记录 ────────────────────────────────────
+export const aiChatConversations = sqliteTable('ai_chat_conversations', {
+  id: integer('id').primaryKey({ autoIncrement: true }),
+  userId: integer('user_id').references(() => users.id),
+  title: text('title').notNull().default('新对话'),
+  createdAt: text('created_at').notNull().$defaultFn(() => new Date().toISOString()),
+  updatedAt: text('updated_at').notNull().$defaultFn(() => new Date().toISOString()),
+});
+
+export const aiChatMessages = sqliteTable('ai_chat_messages', {
+  id: integer('id').primaryKey({ autoIncrement: true }),
+  conversationId: integer('conversation_id').notNull().references(() => aiChatConversations.id, { onDelete: 'cascade' }),
+  role: text('role', { enum: ['user', 'assistant', 'system'] }).notNull(),
+  content: text('content').notNull(),
+  createdAt: text('created_at').notNull().$defaultFn(() => new Date().toISOString()),
+});
+
 // ─── 运维监控系统 ──────────────────────────────────
 export const monitorTargets = sqliteTable('monitor_targets', {
   id: integer('id').primaryKey({ autoIncrement: true }),

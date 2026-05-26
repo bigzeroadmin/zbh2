@@ -27,6 +27,7 @@ import AssetCategories from './pages/admin/AssetCategories';
 import SaasManage from './pages/admin/SaasManage';
 import Reports from './pages/admin/Reports';
 import FaqManage from './pages/admin/FaqManage';
+import ModelConfig from './pages/admin/ModelConfig';
 import MonitorDashboard from './pages/admin/MonitorDashboard';
 import MonitorTargets from './pages/admin/MonitorTargets';
 import MonitorItems from './pages/admin/MonitorItems';
@@ -66,6 +67,7 @@ export default function App() {
         <Route path="saas" element={<SaasManage />} />
         <Route path="reports" element={<Reports />} />
         <Route path="faq" element={<FaqManage />} />
+        <Route path="model-config" element={<ModelConfig />} />
         <Route path="monitor" element={<MonitorDashboard />} />
         <Route path="monitor/targets" element={<MonitorTargets />} />
         <Route path="monitor/items" element={<MonitorItems />} />
