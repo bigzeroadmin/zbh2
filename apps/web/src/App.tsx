@@ -27,6 +27,13 @@ import AssetCategories from './pages/admin/AssetCategories';
 import SaasManage from './pages/admin/SaasManage';
 import Reports from './pages/admin/Reports';
 import FaqManage from './pages/admin/FaqManage';
+import MonitorDashboard from './pages/admin/MonitorDashboard';
+import MonitorTargets from './pages/admin/MonitorTargets';
+import MonitorItems from './pages/admin/MonitorItems';
+import MonitorAlerts from './pages/admin/MonitorAlerts';
+import MonitorReports from './pages/admin/MonitorReports';
+import AuditLogs from './pages/admin/AuditLogs';
+import MonitorPlatforms from './pages/admin/MonitorPlatforms';
 
 export default function App() {
   return (
@@ -59,6 +66,13 @@ export default function App() {
         <Route path="saas" element={<SaasManage />} />
         <Route path="reports" element={<Reports />} />
         <Route path="faq" element={<FaqManage />} />
+        <Route path="monitor" element={<MonitorDashboard />} />
+        <Route path="monitor/targets" element={<MonitorTargets />} />
+        <Route path="monitor/items" element={<MonitorItems />} />
+        <Route path="monitor/alerts" element={<MonitorAlerts />} />
+        <Route path="monitor/reports" element={<MonitorReports />} />
+        <Route path="audit" element={<AuditLogs />} />
+        <Route path="monitor/platforms" element={<MonitorPlatforms />} />
       </Route>
     </Routes>
   );

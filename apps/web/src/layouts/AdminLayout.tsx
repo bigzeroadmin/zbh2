@@ -14,6 +14,12 @@ import {
   CloudOutlined,
   BarChartOutlined,
   RobotOutlined,
+  DashboardOutlined,
+  DesktopOutlined,
+  AlertOutlined,
+  AuditOutlined,
+  ApiOutlined,
+  SettingOutlined,
 } from '@ant-design/icons';
 import { useAuth } from '../lib/auth';
 
@@ -63,6 +69,20 @@ const menuItems = [
   { key: '/admin/faq', label: <Link to="/admin/faq">AI知识库</Link>, icon: <RobotOutlined /> },
   { key: '/admin/reports', label: <Link to="/admin/reports">资产报表</Link>, icon: <BarChartOutlined /> },
   { key: '/admin/users', label: <Link to="/admin/users">用户管理</Link>, icon: <UserOutlined /> },
+  {
+    key: 'monitor',
+    label: '运维监控',
+    icon: <DashboardOutlined />,
+    children: [
+      { key: '/admin/monitor', label: <Link to="/admin/monitor">监控总览</Link>, icon: <DashboardOutlined /> },
+      { key: '/admin/monitor/targets', label: <Link to="/admin/monitor/targets">监控目标</Link>, icon: <DesktopOutlined /> },
+      { key: '/admin/monitor/items', label: <Link to="/admin/monitor/items">监控项管理</Link>, icon: <SettingOutlined /> },
+      { key: '/admin/monitor/alerts', label: <Link to="/admin/monitor/alerts">告警中心</Link>, icon: <AlertOutlined /> },
+      { key: '/admin/monitor/reports', label: <Link to="/admin/monitor/reports">监控报告</Link>, icon: <FileTextOutlined /> },
+      { key: '/admin/monitor/platforms', label: <Link to="/admin/monitor/platforms">平台接入</Link>, icon: <ApiOutlined /> },
+    ],
+  },
+  { key: '/admin/audit', label: <Link to="/admin/audit">审计日志</Link>, icon: <AuditOutlined /> },
 ];
 
 export default function AdminLayout() {
@@ -87,7 +107,7 @@ export default function AdminLayout() {
         <Menu
           mode="inline"
           selectedKeys={[location.pathname]}
-          defaultOpenKeys={['software', 'help', 'activation', 'asset']}
+          defaultOpenKeys={['software', 'help', 'activation', 'asset', 'monitor']}
           items={menuItems}
           style={{ border: 'none' }}
         />

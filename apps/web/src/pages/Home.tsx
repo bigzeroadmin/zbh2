@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
-import { Card, Typography, Row, Col, Spin } from 'antd';
-import { AppstoreOutlined, FileTextOutlined, SafetyCertificateOutlined } from '@ant-design/icons';
-import { Link } from 'react-router-dom';
+import { Card, Typography, Row, Col, Spin, List, Tag, Button } from 'antd';
+import { AppstoreOutlined, FileTextOutlined, SafetyCertificateOutlined, DownloadOutlined } from '@ant-design/icons';
+import { Link, useNavigate } from 'react-router-dom';
 import api from '../lib/api';
 
 const { Title, Paragraph } = Typography;
@@ -14,8 +14,24 @@ interface StatCard {
   color: string;
 }
 
+interface SoftwareItem {
+  id: number;
+  title: string;
+  description?: string;
+  version?: string;
+  fileId?: string;
+}
+
+interface HelpDocument {
+  id: number;
+  title: string;
+}
+
 export default function Home() {
+  const navigate = useNavigate();
   const [stats, setStats] = useState<StatCard[]>([]);
+  const [softwareItems, setSoftwareItems] = useState<SoftwareItem[]>([]);
+  const [helpDocuments, setHelpDocuments] = useState<HelpDocument[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -24,13 +40,19 @@ export default function Home() {
       api.get('/public/help'),
       api.get('/public/activation-products'),
     ]).then(([sw, help, act]) => {
-      const swItems = (sw.data.data as any[]).reduce((sum: number, cat: any) => sum + (cat.items?.length || 0), 0);
-      const helpDocs = (help.data.data as any[]).reduce((sum: number, cat: any) => sum + (cat.documents?.length || 0), 0);
+      const swCategories = sw.data.data as any[];
+      const helpCategories = help.data.data as any[];
+      const swItems = swCategories.reduce((sum: number, cat: any) => sum + (cat.items?.length || 0), 0);
+      const helpDocs = helpCategories.reduce((sum: number, cat: any) => sum + (cat.documents?.length || 0), 0);
       setStats([
         { title: '正版软件', icon: <AppstoreOutlined />, count: swItems, link: '/software', color: '#4da6e8' },
         { title: '帮助文档', icon: <FileTextOutlined />, count: helpDocs, link: '/help', color: '#52c41a' },
         { title: '激活服务', icon: <SafetyCertificateOutlined />, count: act.data.data.length, link: '/activation', color: '#faad14' },
       ]);
+      const flatSoftware = swCategories.flatMap((cat: any) => cat.items || []);
+      setSoftwareItems(flatSoftware.slice(0, 6));
+      const flatDocs = helpCategories.flatMap((cat: any) => cat.documents || []);
+      setHelpDocuments(flatDocs.slice(0, 8));
     }).finally(() => setLoading(false));
   }, []);
 
@@ -56,6 +78,84 @@ export default function Home() {
                 </Link>
               </Col>
             ))}
+          </Row>
+
+          <Row gutter={[24, 24]} style={{ marginTop: 24 }}>
+            <Col xs={24} md={12}>
+              <Card
+                title="热门软件"
+                extra={<Link to="/software">查看全部</Link>}
+                style={{ height: '100%' }}
+              >
+                <List
+                  dataSource={softwareItems}
+                  renderItem={(item) => (
+                    <List.Item
+                      actions={[
+                        ...(item.fileId
+                          ? [
+                              <Button
+                                key="download"
+                                type="link"
+                                icon={<DownloadOutlined />}
+                                href={`/api/public/download/${item.fileId}`}
+                                onClick={(e) => e.stopPropagation()}
+                              />,
+                            ]
+                          : []),
+                      ]}
+                      style={{ cursor: 'pointer' }}
+                      onClick={() => navigate('/software')}
+                    >
+                      <List.Item.Meta
+                        title={
+                          <span>
+                            {item.title}
+                            {item.version && (
+                              <Tag color="blue" style={{ marginLeft: 8 }}>
+                                {item.version}
+                              </Tag>
+                            )}
+                          </span>
+                        }
+                        description={
+                          <Paragraph
+                            type="secondary"
+                            ellipsis={{ rows: 1 }}
+                            style={{ marginBottom: 0 }}
+                          >
+                            {item.description || '暂无描述'}
+                          </Paragraph>
+                        }
+                      />
+                    </List.Item>
+                  )}
+                />
+              </Card>
+            </Col>
+
+            <Col xs={24} md={12}>
+              <Card
+                title="最新文档"
+                extra={<Link to="/help">查看全部</Link>}
+                style={{ height: '100%' }}
+              >
+                <List
+                  dataSource={helpDocuments}
+                  renderItem={(item) => (
+                    <List.Item
+                      style={{ cursor: 'pointer' }}
+                      onClick={() => navigate(`/help/${item.id}`)}
+                    >
+                      <List.Item.Meta
+                        avatar={<FileTextOutlined style={{ fontSize: 18, color: '#52c41a' }} />}
+                        title={item.title}
+                      />
+                    </List.Item>
+                  )}
+                />
+              </Card>
+            </Col>
           </Row>
         </Spin>
       </div>

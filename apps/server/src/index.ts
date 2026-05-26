@@ -19,6 +19,7 @@ import assetRoutes from './routes/assets.js';
 import saasRoutes from './routes/saas.js';
 import reportRoutes from './routes/reports.js';
 import aiFaqRoutes from './routes/ai-faq.js';
+import monitorRoutes from './routes/monitor.js';
 
 const UPLOAD_DIR = resolve(process.cwd(), '../../data/uploads');
 mkdirSync(UPLOAD_DIR, { recursive: true });
@@ -45,6 +46,7 @@ async function start() {
   await app.register(saasRoutes);
   await app.register(reportRoutes);
   await app.register(aiFaqRoutes);
+  await app.register(monitorRoutes);
 
   const port = Number(process.env.PORT) || 7500;
   await app.listen({ port, host: '0.0.0.0' });

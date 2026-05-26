@@ -18,39 +18,48 @@ public partial class MainWindow : Window
 
         if (string.IsNullOrEmpty(user) || string.IsNullOrEmpty(pwd))
         {
-            StatusText.Text = "请输入用户名和密码（演示：任意非空即可）。";
+            StatusText.Text = "请输入用户名和密码。";
             return;
         }
 
         _isLoggedIn = true;
         ActivateWindowsButton.IsEnabled = true;
         ActivateOfficeButton.IsEnabled = true;
+        ActivateWpsButton.IsEnabled = true;
         LoginButton.IsEnabled = false;
         UserNameBox.IsEnabled = false;
         PasswordBox.IsEnabled = false;
-        LoginHint.Text = "已登录（演示）。可进行 KMS 激活演示。";
+        LoginHint.Text = "已登录。可进行产品激活。";
         StatusText.Text = $"欢迎，{user}。请点击上方按钮模拟激活。";
     }
 
     private void ActivateWindowsButton_Click(object sender, RoutedEventArgs e)
     {
         if (!_isLoggedIn) return;
-        ShowDemoSuccess(
-            "Windows 激活（演示）",
-            "模拟 KMS 客户端已成功向本机请求 Windows 批量许可激活。\n\n（演示程序：未执行真实 slmgr /ato，未修改系统激活状态。）");
+        ShowActivationSuccess(
+            "Windows 激活",
+            "已成功请求 Windows 批量许可激活。\n\n（未执行真实 slmgr /ato，未修改系统激活状态。）");
     }
 
     private void ActivateOfficeButton_Click(object sender, RoutedEventArgs e)
     {
         if (!_isLoggedIn) return;
-        ShowDemoSuccess(
-            "Microsoft Office 激活（演示）",
-            "模拟 KMS 客户端已成功向本机请求 Microsoft Office 批量许可激活。\n\n（演示程序：未调用 ospp.vbs 或联网验证。）");
+        ShowActivationSuccess(
+            "Microsoft Office 激活",
+            "已成功请求 Microsoft Office 批量许可激活。\n\n（未调用 ospp.vbs 或联网验证。）");
     }
 
-    private void ShowDemoSuccess(string title, string message)
+    private void ActivateWpsButton_Click(object sender, RoutedEventArgs e)
+    {
+        if (!_isLoggedIn) return;
+        ShowActivationSuccess(
+            "WPS 激活",
+            "已成功请求 WPS 批量许可激活。\n\n（未执行真实激活操作，未修改系统激活状态。）");
+    }
+
+    private void ShowActivationSuccess(string title, string message)
     {
         MessageBox.Show(this, message, title, MessageBoxButton.OK, MessageBoxImage.Information);
-        StatusText.Text = $"[{DateTime.Now:HH:mm:ss}] {title} — 演示反馈：成功。";
+        StatusText.Text = $"[{DateTime.Now:HH:mm:ss}] {title} — 激活反馈：成功。";
     }
 }

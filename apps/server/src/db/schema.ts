@@ -1,4 +1,4 @@
-import { sqliteTable, text, integer } from 'drizzle-orm/sqlite-core';
+import { sqliteTable, text, integer, real } from 'drizzle-orm/sqlite-core';
 
 export const users = sqliteTable('users', {
   id: integer('id').primaryKey({ autoIncrement: true }),
@@ -211,4 +211,119 @@ export const faqEntries = sqliteTable('faq_entries', {
   category: text('category').notNull().default('通用'),
   sort: integer('sort').notNull().default(0),
   createdAt: text('created_at').notNull().$defaultFn(() => new Date().toISOString()),
+});
+
+// ─── 运维监控系统 ──────────────────────────────────
+export const monitorTargets = sqliteTable('monitor_targets', {
+  id: integer('id').primaryKey({ autoIncrement: true }),
+  name: text('name').notNull(),
+  type: text('type', { enum: ['device', 'system', 'database', 'service'] }).notNull(),
+  host: text('host'),
+  port: integer('port'),
+  description: text('description'),
+  status: text('status', { enum: ['online', 'offline', 'warning', 'critical'] }).notNull().default('online'),
+  config: text('config'),
+  createdAt: text('created_at').notNull().$defaultFn(() => new Date().toISOString()),
+  updatedAt: text('updated_at').notNull().$defaultFn(() => new Date().toISOString()),
+});
+
+export const monitorItems = sqliteTable('monitor_items', {
+  id: integer('id').primaryKey({ autoIncrement: true }),
+  targetId: integer('target_id').notNull().references(() => monitorTargets.id, { onDelete: 'cascade' }),
+  name: text('name').notNull(),
+  key: text('key').notNull(),
+  unit: text('unit'),
+  collectMethod: text('collect_method', { enum: ['auto', 'manual', 'api'] }).notNull().default('auto'),
+  collectInterval: integer('collect_interval').notNull().default(60),
+  enabled: integer('enabled').notNull().default(1),
+  createdAt: text('created_at').notNull().$defaultFn(() => new Date().toISOString()),
+  updatedAt: text('updated_at').notNull().$defaultFn(() => new Date().toISOString()),
+});
+
+export const monitorThresholds = sqliteTable('monitor_thresholds', {
+  id: integer('id').primaryKey({ autoIncrement: true }),
+  itemId: integer('item_id').notNull().references(() => monitorItems.id, { onDelete: 'cascade' }),
+  level: text('level', { enum: ['warning', 'critical'] }).notNull(),
+  operator: text('operator', { enum: ['gt', 'lt', 'eq', 'gte', 'lte'] }).notNull(),
+  value: real('value').notNull(),
+  duration: integer('duration').default(0),
+  action: text('action'),
+  notifyMessage: text('notify_message'),
+  enabled: integer('enabled').notNull().default(1),
+  createdAt: text('created_at').notNull().$defaultFn(() => new Date().toISOString()),
+});
+
+export const monitorRecords = sqliteTable('monitor_records', {
+  id: integer('id').primaryKey({ autoIncrement: true }),
+  itemId: integer('item_id').notNull().references(() => monitorItems.id, { onDelete: 'cascade' }),
+  value: real('value').notNull(),
+  status: text('status', { enum: ['normal', 'warning', 'critical'] }).notNull().default('normal'),
+  collectedAt: text('collected_at').notNull(),
+});
+
+export const monitorAlerts = sqliteTable('monitor_alerts', {
+  id: integer('id').primaryKey({ autoIncrement: true }),
+  itemId: integer('item_id').notNull().references(() => monitorItems.id),
+  thresholdId: integer('threshold_id').references(() => monitorThresholds.id),
+  level: text('level', { enum: ['warning', 'critical'] }).notNull(),
+  value: real('value').notNull(),
+  message: text('message').notNull(),
+  status: text('status', { enum: ['pending', 'acknowledged', 'resolved'] }).notNull().default('pending'),
+  acknowledgedBy: integer('acknowledged_by').references(() => users.id),
+  acknowledgedAt: text('acknowledged_at'),
+  resolvedBy: integer('resolved_by').references(() => users.id),
+  resolvedAt: text('resolved_at'),
+  createdAt: text('created_at').notNull().$defaultFn(() => new Date().toISOString()),
+});
+
+export const monitorReportTemplates = sqliteTable('monitor_report_templates', {
+  id: integer('id').primaryKey({ autoIncrement: true }),
+  name: text('name').notNull(),
+  description: text('description'),
+  config: text('config').notNull(),
+  createdBy: integer('created_by').notNull().references(() => users.id),
+  createdAt: text('created_at').notNull().$defaultFn(() => new Date().toISOString()),
+  updatedAt: text('updated_at').notNull().$defaultFn(() => new Date().toISOString()),
+});
+
+export const monitorReports = sqliteTable('monitor_reports', {
+  id: integer('id').primaryKey({ autoIncrement: true }),
+  title: text('title').notNull(),
+  type: text('type', { enum: ['daily', 'weekly', 'monthly', 'custom'] }).notNull(),
+  startTime: text('start_time').notNull(),
+  endTime: text('end_time').notNull(),
+  content: text('content').notNull(),
+  templateId: integer('template_id').references(() => monitorReportTemplates.id),
+  createdBy: integer('created_by').notNull().references(() => users.id),
+  createdAt: text('created_at').notNull().$defaultFn(() => new Date().toISOString()),
+});
+
+export const auditLogs = sqliteTable('audit_logs', {
+  id: integer('id').primaryKey({ autoIncrement: true }),
+  userId: integer('user_id').references(() => users.id),
+  username: text('username').notNull(),
+  action: text('action', { enum: ['login', 'logout', 'create', 'update', 'delete', 'view', 'export', 'config'] }).notNull(),
+  targetType: text('target_type', { enum: ['user', 'software', 'document', 'activation', 'asset', 'ticket', 'saas', 'faq', 'system', 'database', 'device', 'monitor'] }).notNull(),
+  targetId: text('target_id'),
+  targetName: text('target_name'),
+  detail: text('detail'),
+  ipAddress: text('ip_address'),
+  userAgent: text('user_agent'),
+  result: text('result', { enum: ['success', 'failure'] }).notNull().default('success'),
+  createdAt: text('created_at').notNull().$defaultFn(() => new Date().toISOString()),
+});
+
+export const monitorPlatforms = sqliteTable('monitor_platforms', {
+  id: integer('id').primaryKey({ autoIncrement: true }),
+  name: text('name').notNull(),
+  type: text('type', { enum: ['webhook', 'api', 'agent'] }).notNull().default('webhook'),
+  endpoint: text('endpoint').notNull(),
+  apiKey: text('api_key'),
+  secret: text('secret'),
+  syncConfig: text('sync_config'),
+  status: text('status', { enum: ['active', 'disabled', 'testing'] }).notNull().default('active'),
+  lastSyncAt: text('last_sync_at'),
+  description: text('description'),
+  createdAt: text('created_at').notNull().$defaultFn(() => new Date().toISOString()),
+  updatedAt: text('updated_at').notNull().$defaultFn(() => new Date().toISOString()),
 });

@@ -15,6 +15,13 @@
       "when": 1779097730823,
       "tag": "0001_zippy_shadowcat",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "6",
+      "when": 1779779091220,
+      "tag": "0002_special_medusa",
+      "breakpoints": true
     }
   ]
 }

@@ -1,5 +1,5 @@
 import { db, schema } from './index.js';
-import { eq } from 'drizzle-orm';
+import { eq, and } from 'drizzle-orm';
 
 function seedDemo() {
   // Resolve category IDs
@@ -1219,6 +1219,374 @@ netsh winsock reset
     }
   }
   console.log(`Inserted ${helpInserted} help documents (total defined: ${helpData.length})`);
+
+  // ─── 监控系统示例数据 ─────────────────────────────
+  const allUsers = db.select().from(schema.users).all();
+  const adminUser = allUsers.find(u => u.role === 'admin') ?? allUsers[0];
+  const adminId = adminUser?.id ?? 1;
+
+  // ─── 1. 监控目标 (monitorTargets) - 6个 ──────────
+  const mtData = [
+    { name: '正版化平台Web服务器', type: 'system' as const, host: '192.168.1.10', port: 8080, status: 'online' as const, description: '正版化平台主Web服务器' },
+    { name: '数据库服务器', type: 'database' as const, host: '192.168.1.11', port: 3306, status: 'online' as const, description: 'MySQL主数据库服务器' },
+    { name: 'KMS激活服务', type: 'service' as const, host: '192.168.1.12', port: 1688, status: 'online' as const, description: 'KMS批量激活服务' },
+    { name: '文件存储服务器', type: 'system' as const, host: '192.168.1.13', port: 445, status: 'warning' as const, description: '文件共享存储服务器，磁盘空间紧张' },
+    { name: '核心网络交换机', type: 'device' as const, host: '192.168.1.1', port: 161, status: 'online' as const, description: '核心层三层交换机' },
+    { name: '边界防火墙', type: 'device' as const, host: '192.168.1.254', port: 443, status: 'online' as const, description: '边界安全防火墙设备' },
+  ];
+  let mtInserted = 0;
+  for (const t of mtData) {
+    if (!db.select().from(schema.monitorTargets).where(eq(schema.monitorTargets.name, t.name)).get()) {
+      db.insert(schema.monitorTargets).values(t).run(); mtInserted++;
+    }
+  }
+  console.log(`Inserted ${mtInserted} monitor targets`);
+  const mTargets = db.select().from(schema.monitorTargets).all();
+  const mtId = (n: string) => mTargets.find(t => t.name === n)?.id ?? 1;
+
+  // ─── 2. 监控项 (monitorItems) - 15个 ──────────
+  const miData = [
+    { targetId: mtId('正版化平台Web服务器'), name: 'CPU使用率', key: 'cpu_usage', unit: '%', collectMethod: 'auto' as const, collectInterval: 60, enabled: 1 },
+    { targetId: mtId('正版化平台Web服务器'), name: '内存使用率', key: 'mem_usage', unit: '%', collectMethod: 'auto' as const, collectInterval: 60, enabled: 1 },
+    { targetId: mtId('正版化平台Web服务器'), name: '响应时间', key: 'response_time', unit: 'ms', collectMethod: 'auto' as const, collectInterval: 60, enabled: 1 },
+    { targetId: mtId('数据库服务器'), name: '连接数', key: 'db_connections', unit: '个', collectMethod: 'auto' as const, collectInterval: 60, enabled: 1 },
+    { targetId: mtId('数据库服务器'), name: '查询响应时间', key: 'query_time', unit: 'ms', collectMethod: 'auto' as const, collectInterval: 60, enabled: 1 },
+    { targetId: mtId('数据库服务器'), name: '磁盘使用率', key: 'disk_usage', unit: '%', collectMethod: 'auto' as const, collectInterval: 60, enabled: 1 },
+    { targetId: mtId('KMS激活服务'), name: '在线激活数', key: 'active_sessions', unit: '个', collectMethod: 'auto' as const, collectInterval: 60, enabled: 1 },
+    { targetId: mtId('KMS激活服务'), name: '请求成功率', key: 'success_rate', unit: '%', collectMethod: 'auto' as const, collectInterval: 60, enabled: 1 },
+    { targetId: mtId('文件存储服务器'), name: '磁盘使用率', key: 'disk_usage', unit: '%', collectMethod: 'auto' as const, collectInterval: 60, enabled: 1 },
+    { targetId: mtId('文件存储服务器'), name: 'IO等待', key: 'io_wait', unit: '%', collectMethod: 'auto' as const, collectInterval: 60, enabled: 1 },
+    { targetId: mtId('文件存储服务器'), name: '带宽使用', key: 'bandwidth', unit: 'MB/s', collectMethod: 'auto' as const, collectInterval: 60, enabled: 1 },
+    { targetId: mtId('核心网络交换机'), name: '端口流量', key: 'port_traffic', unit: 'Mbps', collectMethod: 'auto' as const, collectInterval: 60, enabled: 1 },
+    { targetId: mtId('核心网络交换机'), name: 'CPU使用率', key: 'cpu_usage', unit: '%', collectMethod: 'auto' as const, collectInterval: 60, enabled: 1 },
+    { targetId: mtId('边界防火墙'), name: '并发连接数', key: 'concurrent_conn', unit: '个', collectMethod: 'auto' as const, collectInterval: 60, enabled: 1 },
+    { targetId: mtId('边界防火墙'), name: '丢包率', key: 'drop_rate', unit: '%', collectMethod: 'auto' as const, collectInterval: 60, enabled: 1 },
+  ];
+  let miInserted = 0;
+  for (const item of miData) {
+    if (!db.select().from(schema.monitorItems).where(and(eq(schema.monitorItems.targetId, item.targetId), eq(schema.monitorItems.key, item.key))).get()) {
+      db.insert(schema.monitorItems).values(item).run(); miInserted++;
+    }
+  }
+  console.log(`Inserted ${miInserted} monitor items`);
+  const mItems = db.select().from(schema.monitorItems).all();
+  const mItemId = (tn: string, k: string) => {
+    const tid = mtId(tn);
+    return mItems.find(i => i.targetId === tid && i.key === k)?.id ?? 1;
+  };
+
+  // ─── 3. 阈值规则 (monitorThresholds) - 每项2条，共30条 ──────────
+  const mthData = [
+    // Web服务器 - CPU使用率
+    { itemId: mItemId('正版化平台Web服务器', 'cpu_usage'), level: 'warning' as const, operator: 'gt' as const, value: 80, action: '发送邮件通知管理员', notifyMessage: '${target}的${item}已达到${value}${unit}，超过${level}阈值${threshold}' },
+    { itemId: mItemId('正版化平台Web服务器', 'cpu_usage'), level: 'critical' as const, operator: 'gt' as const, value: 95, action: '自动重启服务并通知管理员', notifyMessage: '${target}的${item}已达到${value}${unit}，超过${level}阈值${threshold}' },
+    // Web服务器 - 内存使用率
+    { itemId: mItemId('正版化平台Web服务器', 'mem_usage'), level: 'warning' as const, operator: 'gt' as const, value: 85, action: '发送邮件通知管理员', notifyMessage: '${target}的${item}已达到${value}${unit}，超过${level}阈值${threshold}' },
+    { itemId: mItemId('正版化平台Web服务器', 'mem_usage'), level: 'critical' as const, operator: 'gt' as const, value: 95, action: '自动清理缓存并通知管理员', notifyMessage: '${target}的${item}已达到${value}${unit}，超过${level}阈值${threshold}' },
+    // Web服务器 - 响应时间
+    { itemId: mItemId('正版化平台Web服务器', 'response_time'), level: 'warning' as const, operator: 'gt' as const, value: 1000, action: '发送邮件通知管理员', notifyMessage: '${target}的${item}已达到${value}${unit}，超过${level}阈值${threshold}' },
+    { itemId: mItemId('正版化平台Web服务器', 'response_time'), level: 'critical' as const, operator: 'gt' as const, value: 3000, action: '自动切换备用服务器', notifyMessage: '${target}的${item}已达到${value}${unit}，超过${level}阈值${threshold}' },
+    // 数据库 - 连接数
+    { itemId: mItemId('数据库服务器', 'db_connections'), level: 'warning' as const, operator: 'gt' as const, value: 150, action: '发送邮件通知DBA', notifyMessage: '${target}的${item}已达到${value}${unit}，超过${level}阈值${threshold}' },
+    { itemId: mItemId('数据库服务器', 'db_connections'), level: 'critical' as const, operator: 'gt' as const, value: 200, action: '自动释放空闲连接并通知DBA', notifyMessage: '${target}的${item}已达到${value}${unit}，超过${level}阈值${threshold}' },
+    // 数据库 - 查询响应时间
+    { itemId: mItemId('数据库服务器', 'query_time'), level: 'warning' as const, operator: 'gt' as const, value: 500, action: '发送邮件通知DBA', notifyMessage: '${target}的${item}已达到${value}${unit}，超过${level}阈值${threshold}' },
+    { itemId: mItemId('数据库服务器', 'query_time'), level: 'critical' as const, operator: 'gt' as const, value: 2000, action: '自动杀掉慢查询并通知DBA', notifyMessage: '${target}的${item}已达到${value}${unit}，超过${level}阈值${threshold}' },
+    // 数据库 - 磁盘使用率
+    { itemId: mItemId('数据库服务器', 'disk_usage'), level: 'warning' as const, operator: 'gt' as const, value: 80, action: '发送邮件通知管理员', notifyMessage: '${target}的${item}已达到${value}${unit}，超过${level}阈值${threshold}' },
+    { itemId: mItemId('数据库服务器', 'disk_usage'), level: 'critical' as const, operator: 'gt' as const, value: 90, action: '自动清理日志并通知管理员', notifyMessage: '${target}的${item}已达到${value}${unit}，超过${level}阈值${threshold}' },
+    // KMS - 在线激活数
+    { itemId: mItemId('KMS激活服务', 'active_sessions'), level: 'warning' as const, operator: 'gt' as const, value: 500, action: '发送邮件通知管理员', notifyMessage: '${target}的${item}已达到${value}${unit}，超过${level}阈值${threshold}' },
+    { itemId: mItemId('KMS激活服务', 'active_sessions'), level: 'critical' as const, operator: 'gt' as const, value: 800, action: '自动扩展服务并通知管理员', notifyMessage: '${target}的${item}已达到${value}${unit}，超过${level}阈值${threshold}' },
+    // KMS - 请求成功率（低于阈值告警）
+    { itemId: mItemId('KMS激活服务', 'success_rate'), level: 'warning' as const, operator: 'lt' as const, value: 95, action: '发送邮件通知管理员', notifyMessage: '${target}的${item}已降至${value}${unit}，低于${level}阈值${threshold}' },
+    { itemId: mItemId('KMS激活服务', 'success_rate'), level: 'critical' as const, operator: 'lt' as const, value: 90, action: '自动重启服务并通知管理员', notifyMessage: '${target}的${item}已降至${value}${unit}，低于${level}阈值${threshold}' },
+    // 文件服务器 - 磁盘使用率
+    { itemId: mItemId('文件存储服务器', 'disk_usage'), level: 'warning' as const, operator: 'gt' as const, value: 80, action: '发送邮件通知管理员', notifyMessage: '${target}的${item}已达到${value}${unit}，超过${level}阈值${threshold}' },
+    { itemId: mItemId('文件存储服务器', 'disk_usage'), level: 'critical' as const, operator: 'gt' as const, value: 90, action: '自动归档旧文件并通知管理员', notifyMessage: '${target}的${item}已达到${value}${unit}，超过${level}阈值${threshold}' },
+    // 文件服务器 - IO等待
+    { itemId: mItemId('文件存储服务器', 'io_wait'), level: 'warning' as const, operator: 'gt' as const, value: 20, action: '发送邮件通知管理员', notifyMessage: '${target}的${item}已达到${value}${unit}，超过${level}阈值${threshold}' },
+    { itemId: mItemId('文件存储服务器', 'io_wait'), level: 'critical' as const, operator: 'gt' as const, value: 40, action: '自动限流并通知管理员', notifyMessage: '${target}的${item}已达到${value}${unit}，超过${level}阈值${threshold}' },
+    // 文件服务器 - 带宽使用
+    { itemId: mItemId('文件存储服务器', 'bandwidth'), level: 'warning' as const, operator: 'gt' as const, value: 80, action: '发送邮件通知管理员', notifyMessage: '${target}的${item}已达到${value}${unit}，超过${level}阈值${threshold}' },
+    { itemId: mItemId('文件存储服务器', 'bandwidth'), level: 'critical' as const, operator: 'gt' as const, value: 100, action: '自动限速并通知管理员', notifyMessage: '${target}的${item}已达到${value}${unit}，超过${level}阈值${threshold}' },
+    // 交换机 - 端口流量
+    { itemId: mItemId('核心网络交换机', 'port_traffic'), level: 'warning' as const, operator: 'gt' as const, value: 800, action: '发送邮件通知网络管理员', notifyMessage: '${target}的${item}已达到${value}${unit}，超过${level}阈值${threshold}' },
+    { itemId: mItemId('核心网络交换机', 'port_traffic'), level: 'critical' as const, operator: 'gt' as const, value: 950, action: '自动QoS限流并通知网络管理员', notifyMessage: '${target}的${item}已达到${value}${unit}，超过${level}阈值${threshold}' },
+    // 交换机 - CPU使用率
+    { itemId: mItemId('核心网络交换机', 'cpu_usage'), level: 'warning' as const, operator: 'gt' as const, value: 70, action: '发送邮件通知网络管理员', notifyMessage: '${target}的${item}已达到${value}${unit}，超过${level}阈值${threshold}' },
+    { itemId: mItemId('核心网络交换机', 'cpu_usage'), level: 'critical' as const, operator: 'gt' as const, value: 90, action: '自动切换备用路径并通知网络管理员', notifyMessage: '${target}的${item}已达到${value}${unit}，超过${level}阈值${threshold}' },
+    // 防火墙 - 并发连接数
+    { itemId: mItemId('边界防火墙', 'concurrent_conn'), level: 'warning' as const, operator: 'gt' as const, value: 50000, action: '发送邮件通知安全管理员', notifyMessage: '${target}的${item}已达到${value}${unit}，超过${level}阈值${threshold}' },
+    { itemId: mItemId('边界防火墙', 'concurrent_conn'), level: 'critical' as const, operator: 'gt' as const, value: 80000, action: '自动启用DDoS防护并通知安全管理员', notifyMessage: '${target}的${item}已达到${value}${unit}，超过${level}阈值${threshold}' },
+    // 防火墙 - 丢包率
+    { itemId: mItemId('边界防火墙', 'drop_rate'), level: 'warning' as const, operator: 'gt' as const, value: 1, action: '发送邮件通知安全管理员', notifyMessage: '${target}的${item}已达到${value}${unit}，超过${level}阈值${threshold}' },
+    { itemId: mItemId('边界防火墙', 'drop_rate'), level: 'critical' as const, operator: 'gt' as const, value: 5, action: '自动切换备用链路并通知安全管理员', notifyMessage: '${target}的${item}已达到${value}${unit}，超过${level}阈值${threshold}' },
+  ];
+  let mthInserted = 0;
+  for (const th of mthData) {
+    if (!db.select().from(schema.monitorThresholds).where(and(eq(schema.monitorThresholds.itemId, th.itemId), eq(schema.monitorThresholds.level, th.level))).get()) {
+      db.insert(schema.monitorThresholds).values(th).run(); mthInserted++;
+    }
+  }
+  console.log(`Inserted ${mthInserted} monitor thresholds`);
+  const mThresholds = db.select().from(schema.monitorThresholds).all();
+  const mThId = (iid: number, level: string) => mThresholds.find(t => t.itemId === iid && t.level === level)?.id ?? 1;
+
+  // ─── 4. 采集记录 (monitorRecords) - 200+条 ──────────
+  const now = Date.now();
+  const dayMs = 24 * 60 * 60 * 1000;
+  const sevenDaysMs = 7 * dayMs;
+  const itemRanges: Record<string, { min: number; max: number; warn: number; crit: number; lowIsBad?: boolean }> = {
+    cpu_usage: { min: 15, max: 60, warn: 80, crit: 95 },
+    mem_usage: { min: 40, max: 70, warn: 85, crit: 95 },
+    response_time: { min: 50, max: 500, warn: 1000, crit: 3000 },
+    db_connections: { min: 20, max: 100, warn: 150, crit: 200 },
+    query_time: { min: 10, max: 200, warn: 500, crit: 2000 },
+    disk_usage: { min: 55, max: 78, warn: 80, crit: 90 },
+    active_sessions: { min: 50, max: 300, warn: 500, crit: 800 },
+    success_rate: { min: 96, max: 99.9, warn: 95, crit: 90, lowIsBad: true },
+    io_wait: { min: 2, max: 15, warn: 20, crit: 40 },
+    bandwidth: { min: 20, max: 60, warn: 80, crit: 100 },
+    port_traffic: { min: 200, max: 600, warn: 800, crit: 950 },
+    concurrent_conn: { min: 5000, max: 30000, warn: 50000, crit: 80000 },
+    drop_rate: { min: 0.01, max: 0.5, warn: 1, crit: 5 },
+  };
+  const mRecords: { itemId: number; value: number; status: 'normal' | 'warning' | 'critical'; collectedAt: string }[] = [];
+  // 伪随机生成器，保证每次运行数据一致
+  let seed = 42;
+  const pr = () => { seed = (seed * 1103515245 + 12345) & 0x7fffffff; return seed / 0x7fffffff; };
+  for (const item of mItems) {
+    const range = itemRanges[item.key];
+    if (!range) continue;
+    let ts = now - sevenDaysMs;
+    while (ts < now) {
+      const r = pr();
+      let value: number; let status: 'normal' | 'warning' | 'critical';
+      if (r < 0.04) {
+        // 4% critical异常值
+        value = range.lowIsBad ? range.crit - pr() * 5 : range.crit + pr() * 5;
+        status = 'critical';
+      } else if (r < 0.10) {
+        // 6% warning异常值
+        value = range.lowIsBad ? range.warn - pr() * 3 : range.warn + pr() * 5;
+        status = 'warning';
+      } else {
+        // 90% 正常值
+        value = range.min + pr() * (range.max - range.min);
+        status = 'normal';
+      }
+      value = Math.round(value * 100) / 100;
+      mRecords.push({ itemId: item.id, value, status, collectedAt: new Date(ts).toISOString() });
+      ts += (4 + pr() * 2) * 60 * 60 * 1000; // 4-6小时间隔
+    }
+  }
+  // 仅在表为空时插入，避免重复
+  const existingRecordCount = db.select().from(schema.monitorRecords).all().length;
+  if (existingRecordCount === 0 && mRecords.length > 0) {
+    db.insert(schema.monitorRecords).values(mRecords).run();
+  }
+  console.log(`Skipped/inserted ${mRecords.length} monitor records (existing: ${existingRecordCount})`);
+
+  // ─── 5. 告警记录 (monitorAlerts) - 12条 ──────────
+  // 4条 pending (1-2天前), 4条 acknowledged (3-4天前), 4条 resolved (5-7天前)
+  const maData = [
+    // pending - 最近1-2天
+    { itemId: mItemId('正版化平台Web服务器', 'cpu_usage'), thresholdId: mThId(mItemId('正版化平台Web服务器', 'cpu_usage'), 'warning'), level: 'warning' as const, value: 85.3, message: '正版化平台Web服务器的CPU使用率已达到85.3%，超过warning阈值80', status: 'pending' as const, createdAt: new Date(now - 1 * dayMs + 3600000).toISOString() },
+    { itemId: mItemId('文件存储服务器', 'disk_usage'), thresholdId: mThId(mItemId('文件存储服务器', 'disk_usage'), 'critical'), level: 'critical' as const, value: 92.1, message: '文件存储服务器的磁盘使用率已达到92.1%，超过critical阈值90', status: 'pending' as const, createdAt: new Date(now - 1.5 * dayMs).toISOString() },
+    { itemId: mItemId('数据库服务器', 'query_time'), thresholdId: mThId(mItemId('数据库服务器', 'query_time'), 'warning'), level: 'warning' as const, value: 680, message: '数据库服务器的查询响应时间已达到680ms，超过warning阈值500ms', status: 'pending' as const, createdAt: new Date(now - 2 * dayMs + 7200000).toISOString() },
+    { itemId: mItemId('边界防火墙', 'drop_rate'), thresholdId: mThId(mItemId('边界防火墙', 'drop_rate'), 'warning'), level: 'warning' as const, value: 1.8, message: '边界防火墙的丢包率已达到1.8%，超过warning阈值1%', status: 'pending' as const, createdAt: new Date(now - 2 * dayMs).toISOString() },
+    // acknowledged - 3-4天前
+    { itemId: mItemId('正版化平台Web服务器', 'response_time'), thresholdId: mThId(mItemId('正版化平台Web服务器', 'response_time'), 'warning'), level: 'warning' as const, value: 1200, message: '正版化平台Web服务器的响应时间已达到1200ms，超过warning阈值1000ms', status: 'acknowledged' as const, acknowledgedBy: adminId, acknowledgedAt: new Date(now - 3 * dayMs + 3600000).toISOString(), createdAt: new Date(now - 3 * dayMs).toISOString() },
+    { itemId: mItemId('文件存储服务器', 'io_wait'), thresholdId: mThId(mItemId('文件存储服务器', 'io_wait'), 'critical'), level: 'critical' as const, value: 45.2, message: '文件存储服务器的IO等待已达到45.2%，超过critical阈值40%', status: 'acknowledged' as const, acknowledgedBy: adminId, acknowledgedAt: new Date(now - 3.5 * dayMs + 7200000).toISOString(), createdAt: new Date(now - 3.5 * dayMs).toISOString() },
+    { itemId: mItemId('KMS激活服务', 'success_rate'), thresholdId: mThId(mItemId('KMS激活服务', 'success_rate'), 'warning'), level: 'warning' as const, value: 93.5, message: 'KMS激活服务的请求成功率已降至93.5%，低于warning阈值95%', status: 'acknowledged' as const, acknowledgedBy: adminId, acknowledgedAt: new Date(now - 4 * dayMs + 3600000).toISOString(), createdAt: new Date(now - 4 * dayMs).toISOString() },
+    { itemId: mItemId('核心网络交换机', 'port_traffic'), thresholdId: mThId(mItemId('核心网络交换机', 'port_traffic'), 'warning'), level: 'warning' as const, value: 850, message: '核心网络交换机的端口流量已达到850Mbps，超过warning阈值800Mbps', status: 'acknowledged' as const, acknowledgedBy: adminId, acknowledgedAt: new Date(now - 4 * dayMs + 7200000).toISOString(), createdAt: new Date(now - 4 * dayMs).toISOString() },
+    // resolved - 5-7天前
+    { itemId: mItemId('正版化平台Web服务器', 'mem_usage'), thresholdId: mThId(mItemId('正版化平台Web服务器', 'mem_usage'), 'critical'), level: 'critical' as const, value: 96.8, message: '正版化平台Web服务器的内存使用率已达到96.8%，超过critical阈值95%', status: 'resolved' as const, acknowledgedBy: adminId, acknowledgedAt: new Date(now - 6 * dayMs + 3600000).toISOString(), resolvedBy: adminId, resolvedAt: new Date(now - 5.5 * dayMs).toISOString(), createdAt: new Date(now - 6 * dayMs).toISOString() },
+    { itemId: mItemId('数据库服务器', 'db_connections'), thresholdId: mThId(mItemId('数据库服务器', 'db_connections'), 'warning'), level: 'warning' as const, value: 165, message: '数据库服务器的连接数已达到165个，超过warning阈值150个', status: 'resolved' as const, acknowledgedBy: adminId, acknowledgedAt: new Date(now - 6.5 * dayMs + 3600000).toISOString(), resolvedBy: adminId, resolvedAt: new Date(now - 6 * dayMs).toISOString(), createdAt: new Date(now - 6.5 * dayMs).toISOString() },
+    { itemId: mItemId('文件存储服务器', 'bandwidth'), thresholdId: mThId(mItemId('文件存储服务器', 'bandwidth'), 'critical'), level: 'critical' as const, value: 112.5, message: '文件存储服务器的带宽使用已达到112.5MB/s，超过critical阈值100MB/s', status: 'resolved' as const, acknowledgedBy: adminId, acknowledgedAt: new Date(now - 7 * dayMs + 7200000).toISOString(), resolvedBy: adminId, resolvedAt: new Date(now - 6.5 * dayMs).toISOString(), createdAt: new Date(now - 7 * dayMs).toISOString() },
+    { itemId: mItemId('边界防火墙', 'concurrent_conn'), thresholdId: mThId(mItemId('边界防火墙', 'concurrent_conn'), 'warning'), level: 'warning' as const, value: 55000, message: '边界防火墙的并发连接数已达到55000个，超过warning阈值50000个', status: 'resolved' as const, acknowledgedBy: adminId, acknowledgedAt: new Date(now - 7 * dayMs + 3600000).toISOString(), resolvedBy: adminId, resolvedAt: new Date(now - 6.8 * dayMs).toISOString(), createdAt: new Date(now - 7 * dayMs).toISOString() },
+  ];
+  let maInserted = 0;
+  for (const a of maData) {
+    if (!db.select().from(schema.monitorAlerts).where(eq(schema.monitorAlerts.message, a.message)).get()) {
+      db.insert(schema.monitorAlerts).values(a).run(); maInserted++;
+    }
+  }
+  console.log(`Inserted ${maInserted} monitor alerts`);
+
+  // ─── 6. 报告模板 (monitorReportTemplates) - 2个 ──────────
+  const allItemIds = mItems.map(i => i.id);
+  const dbItemIds = mItems.filter(i => {
+    const target = mTargets.find(t => t.id === i.targetId);
+    return target?.type === 'database';
+  }).map(i => i.id);
+  const mrtData = [
+    { name: '系统运行周报模板', description: '每周系统运行状态汇总报告模板', config: JSON.stringify({ itemIds: allItemIds, display: { cpu_usage: 'chart', mem_usage: 'chart', response_time: 'chart', db_connections: 'chart', query_time: 'chart', disk_usage: 'table', active_sessions: 'chart', success_rate: 'chart', io_wait: 'chart', bandwidth: 'chart', port_traffic: 'chart', concurrent_conn: 'chart', drop_rate: 'chart' } }), createdBy: adminId },
+    { name: '数据库健康检查模板', description: '数据库服务器健康状态检查报告模板', config: JSON.stringify({ itemIds: dbItemIds, display: { db_connections: 'chart', query_time: 'chart', disk_usage: 'table' } }), createdBy: adminId },
+  ];
+  let mrtInserted = 0;
+  for (const t of mrtData) {
+    if (!db.select().from(schema.monitorReportTemplates).where(eq(schema.monitorReportTemplates.name, t.name)).get()) {
+      db.insert(schema.monitorReportTemplates).values(t).run(); mrtInserted++;
+    }
+  }
+  console.log(`Inserted ${mrtInserted} monitor report templates`);
+  const mTemplates = db.select().from(schema.monitorReportTemplates).all();
+  const weeklyTplId = mTemplates.find(t => t.name === '系统运行周报模板')?.id;
+  const dbTplId = mTemplates.find(t => t.name === '数据库健康检查模板')?.id;
+
+  // ─── 7. 监控报告 (monitorReports) - 3份 ──────────
+  const mrData = [
+    {
+      title: '监控系统日报 - ' + new Date(now - dayMs).toISOString().slice(0, 10),
+      type: 'daily' as const,
+      startTime: new Date(now - dayMs).toISOString(),
+      endTime: new Date(now).toISOString(),
+      content: JSON.stringify({
+        summary: { totalTargets: 6, onlineTargets: 5, warningTargets: 1, criticalTargets: 0, totalAlerts: 3, pendingAlerts: 2, resolvedAlerts: 1 },
+        highlights: ['文件存储服务器磁盘使用率持续高位', 'Web服务器CPU使用率在下午出现告警'],
+      }),
+      templateId: weeklyTplId,
+      createdBy: adminId,
+    },
+    {
+      title: '系统运行周报 - ' + new Date(now - 7 * dayMs).toISOString().slice(0, 10) + ' 至 ' + new Date(now).toISOString().slice(0, 10),
+      type: 'weekly' as const,
+      startTime: new Date(now - 7 * dayMs).toISOString(),
+      endTime: new Date(now).toISOString(),
+      content: JSON.stringify({
+        summary: { totalTargets: 6, uptime: '99.8%', totalAlerts: 12, warningAlerts: 8, criticalAlerts: 4, resolvedRate: '66.7%' },
+        weeklyTrend: '本周系统整体运行平稳，文件存储服务器磁盘空间紧张需关注，建议尽快扩容。',
+        topIssues: ['文件存储服务器磁盘使用率超90%', 'Web服务器内存使用率一次达到critical'],
+      }),
+      templateId: weeklyTplId,
+      createdBy: adminId,
+    },
+    {
+      title: '数据库健康月报 - ' + new Date(now - 30 * dayMs).toISOString().slice(0, 7),
+      type: 'monthly' as const,
+      startTime: new Date(now - 30 * dayMs).toISOString(),
+      endTime: new Date(now).toISOString(),
+      content: JSON.stringify({
+        summary: { avgConnections: 85, maxConnections: 165, avgQueryTime: 120, maxQueryTime: 680, diskUsageTrend: '持续增长' },
+        recommendations: ['建议清理历史数据释放磁盘空间', '优化慢查询SQL', '考虑升级数据库服务器硬件'],
+      }),
+      templateId: dbTplId,
+      createdBy: adminId,
+    },
+  ];
+  let mrInserted = 0;
+  for (const r of mrData) {
+    if (!db.select().from(schema.monitorReports).where(eq(schema.monitorReports.title, r.title)).get()) {
+      db.insert(schema.monitorReports).values(r).run(); mrInserted++;
+    }
+  }
+  console.log(`Inserted ${mrInserted} monitor reports`);
+
+  // ─── 8. 审计日志 (auditLogs) - 50+条 ──────────
+  const auditTemplates = [
+    { username: 'admin', action: 'login' as const, targetType: 'user' as const, targetName: null as string | null, detail: '管理员登录系统', result: 'success' as const },
+    { username: 'admin', action: 'logout' as const, targetType: 'user' as const, targetName: null as string | null, detail: '管理员退出系统', result: 'success' as const },
+    { username: 'admin', action: 'create' as const, targetType: 'software' as const, targetName: 'Windows 11 专业版' as string | null, detail: '新增软件项', result: 'success' as const },
+    { username: 'admin', action: 'update' as const, targetType: 'software' as const, targetName: 'Office 2024 专业增强版' as string | null, detail: '更新软件信息', result: 'success' as const },
+    { username: 'admin', action: 'delete' as const, targetType: 'document' as const, targetName: '过期的安装指南' as string | null, detail: '删除过期文档', result: 'success' as const },
+    { username: 'admin', action: 'create' as const, targetType: 'activation' as const, targetName: 'WIN-批量激活' as string | null, detail: '批量创建激活码', result: 'success' as const },
+    { username: 'admin', action: 'view' as const, targetType: 'user' as const, targetName: null as string | null, detail: '查看用户列表', result: 'success' as const },
+    { username: 'admin', action: 'export' as const, targetType: 'software' as const, targetName: null as string | null, detail: '导出软件清单', result: 'success' as const },
+    { username: 'admin', action: 'config' as const, targetType: 'system' as const, targetName: null as string | null, detail: '修改系统配置', result: 'success' as const },
+    { username: 'admin', action: 'create' as const, targetType: 'faq' as const, targetName: '如何重置密码' as string | null, detail: '新增FAQ条目', result: 'success' as const },
+    { username: 'zhangsan', action: 'login' as const, targetType: 'user' as const, targetName: null as string | null, detail: '用户登录系统', result: 'success' as const },
+    { username: 'zhangsan', action: 'view' as const, targetType: 'software' as const, targetName: 'WPS Office 2024' as string | null, detail: '查看软件详情', result: 'success' as const },
+    { username: 'zhangsan', action: 'create' as const, targetType: 'activation' as const, targetName: 'OFFICE-激活' as string | null, detail: '申请激活码', result: 'success' as const },
+    { username: 'zhangsan', action: 'logout' as const, targetType: 'user' as const, targetName: null as string | null, detail: '用户退出系统', result: 'success' as const },
+    { username: 'lisi', action: 'login' as const, targetType: 'user' as const, targetName: null as string | null, detail: '用户登录系统', result: 'success' as const },
+    { username: 'lisi', action: 'create' as const, targetType: 'ticket' as const, targetName: '打印机无法连接' as string | null, detail: '提交工单', result: 'success' as const },
+    { username: 'lisi', action: 'view' as const, targetType: 'document' as const, targetName: 'Windows 11 安装指南' as string | null, detail: '查看帮助文档', result: 'success' as const },
+    { username: 'lisi', action: 'export' as const, targetType: 'asset' as const, targetName: null as string | null, detail: '导出资产清单', result: 'success' as const },
+    { username: 'admin', action: 'update' as const, targetType: 'monitor' as const, targetName: '文件存储服务器' as string | null, detail: '更新监控目标配置', result: 'success' as const },
+    { username: 'admin', action: 'view' as const, targetType: 'monitor' as const, targetName: null as string | null, detail: '查看监控仪表板', result: 'success' as const },
+    { username: 'admin', action: 'create' as const, targetType: 'asset' as const, targetName: 'Dell R740服务器' as string | null, detail: '新增资产', result: 'success' as const },
+    { username: 'admin', action: 'update' as const, targetType: 'ticket' as const, targetName: 'TK-2026051' as string | null, detail: '更新工单状态', result: 'success' as const },
+    { username: 'admin', action: 'delete' as const, targetType: 'faq' as const, targetName: '旧版FAQ条目' as string | null, detail: '删除过时FAQ', result: 'success' as const },
+    { username: 'admin', action: 'config' as const, targetType: 'system' as const, targetName: null as string | null, detail: '修改邮件通知配置', result: 'success' as const },
+    { username: 'zhangsan', action: 'view' as const, targetType: 'activation' as const, targetName: '我的激活码' as string | null, detail: '查看已领取的激活码', result: 'success' as const },
+    { username: 'zhangsan', action: 'create' as const, targetType: 'ticket' as const, targetName: '激活失败求助' as string | null, detail: '提交工单', result: 'success' as const },
+    { username: 'lisi', action: 'update' as const, targetType: 'saas' as const, targetName: 'Microsoft 365' as string | null, detail: '续订SaaS服务', result: 'success' as const },
+    { username: 'admin', action: 'create' as const, targetType: 'document' as const, targetName: '新员工入职指南' as string | null, detail: '新增帮助文档', result: 'success' as const },
+    { username: 'admin', action: 'login' as const, targetType: 'user' as const, targetName: null as string | null, detail: '管理员登录系统', result: 'success' as const },
+    { username: 'admin', action: 'export' as const, targetType: 'activation' as const, targetName: null as string | null, detail: '导出激活码使用报表', result: 'success' as const },
+    { username: 'lisi', action: 'logout' as const, targetType: 'user' as const, targetName: null as string | null, detail: '用户退出系统', result: 'success' as const },
+    { username: 'admin', action: 'update' as const, targetType: 'user' as const, targetName: 'zhangsan' as string | null, detail: '重置用户密码', result: 'success' as const },
+    { username: 'admin', action: 'create' as const, targetType: 'software' as const, targetName: '福昕PDF编辑器' as string | null, detail: '新增软件项', result: 'success' as const },
+    { username: 'admin', action: 'config' as const, targetType: 'database' as const, targetName: null as string | null, detail: '数据库备份策略调整', result: 'success' as const },
+    { username: 'zhangsan', action: 'view' as const, targetType: 'saas' as const, targetName: '云服务列表' as string | null, detail: '浏览云服务', result: 'success' as const },
+    { username: 'admin', action: 'delete' as const, targetType: 'software' as const, targetName: '已下架软件' as string | null, detail: '删除下架软件', result: 'success' as const },
+    { username: 'admin', action: 'update' as const, targetType: 'activation' as const, targetName: 'WIN-批量激活' as string | null, detail: '更新激活码批次', result: 'success' as const },
+    { username: 'lisi', action: 'create' as const, targetType: 'activation' as const, targetName: 'WPS-激活' as string | null, detail: '申请WPS激活码', result: 'success' as const },
+    { username: 'admin', action: 'view' as const, targetType: 'asset' as const, targetName: null as string | null, detail: '查看资产列表', result: 'success' as const },
+    { username: 'admin', action: 'create' as const, targetType: 'device' as const, targetName: '核心交换机' as string | null, detail: '登记网络设备资产', result: 'success' as const },
+    { username: 'zhangsan', action: 'login' as const, targetType: 'user' as const, targetName: null as string | null, detail: '用户登录系统', result: 'failure' as const },
+    { username: 'admin', action: 'update' as const, targetType: 'asset' as const, targetName: '联想笔记本' as string | null, detail: '更新资产领用信息', result: 'success' as const },
+    { username: 'admin', action: 'config' as const, targetType: 'system' as const, targetName: null as string | null, detail: '调整监控采集频率', result: 'success' as const },
+    { username: 'lisi', action: 'view' as const, targetType: 'ticket' as const, targetName: null as string | null, detail: '查看工单列表', result: 'success' as const },
+    { username: 'admin', action: 'create' as const, targetType: 'saas' as const, targetName: 'Adobe Creative Cloud' as string | null, detail: '新增SaaS服务', result: 'success' as const },
+    { username: 'zhangsan', action: 'update' as const, targetType: 'ticket' as const, targetName: 'TK-2026052' as string | null, detail: '补充工单信息', result: 'success' as const },
+    { username: 'admin', action: 'login' as const, targetType: 'user' as const, targetName: null as string | null, detail: '管理员登录系统', result: 'success' as const },
+    { username: 'lisi', action: 'login' as const, targetType: 'user' as const, targetName: null as string | null, detail: '用户登录系统', result: 'failure' as const },
+    { username: 'admin', action: 'export' as const, targetType: 'ticket' as const, targetName: null as string | null, detail: '导出工单统计报表', result: 'success' as const },
+    { username: 'admin', action: 'delete' as const, targetType: 'asset' as const, targetName: '报废设备' as string | null, detail: '报废资产删除', result: 'success' as const },
+    { username: 'admin', action: 'create' as const, targetType: 'faq' as const, targetName: '如何使用VPN' as string | null, detail: '新增FAQ条目', result: 'success' as const },
+    { username: 'zhangsan', action: 'view' as const, targetType: 'document' as const, targetName: 'VPN安装指南' as string | null, detail: '查看帮助文档', result: 'success' as const },
+    { username: 'admin', action: 'config' as const, targetType: 'system' as const, targetName: null as string | null, detail: '更新系统安全策略', result: 'success' as const },
+    { username: 'admin', action: 'update' as const, targetType: 'monitor' as const, targetName: '数据库服务器' as string | null, detail: '调整监控阈值', result: 'success' as const },
+    { username: 'lisi', action: 'export' as const, targetType: 'software' as const, targetName: null as string | null, detail: '导出软件使用统计', result: 'success' as const },
+    { username: 'admin', action: 'login' as const, targetType: 'user' as const, targetName: null as string | null, detail: '管理员登录系统', result: 'failure' as const },
+  ];
+  const ipAddrs = ['192.168.1.100', '192.168.1.101', '192.168.1.102', '10.0.0.5', '10.0.0.12', '172.16.0.50'];
+  const userAgents = [
+    'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 Chrome/124.0.0.0 Safari/537.36',
+    'Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:125.0) Firefox/125.0',
+    'Mozilla/5.0 (Macintosh; Intel Mac OS X 14_4) AppleWebKit/605.1.15 Safari/17.4',
+    'Mozilla/5.0 (Windows NT 10.0; Win64; x64) Edge/124.0.0.0',
+  ];
+  // 仅在表为空时插入审计日志，避免重复
+  const existingAuditCount = db.select().from(schema.auditLogs).all().length;
+  let alInserted = 0;
+  if (existingAuditCount === 0) {
+    for (let i = 0; i < auditTemplates.length; i++) {
+      const t = auditTemplates[i];
+      const daysAgo = Math.floor(i * 30 / auditTemplates.length); // 时间分散在过去30天
+      const createdAt = new Date(now - daysAgo * dayMs + (i % 8) * 3600000).toISOString();
+      db.insert(schema.auditLogs).values({
+        userId: adminId,
+        username: t.username,
+        action: t.action,
+        targetType: t.targetType,
+        targetId: null,
+        targetName: t.targetName,
+        detail: t.detail,
+        ipAddress: ipAddrs[i % ipAddrs.length],
+        userAgent: userAgents[i % userAgents.length],
+        result: t.result,
+        createdAt,
+      }).run(); alInserted++;
+    }
+  }
+  console.log(`Skipped/inserted ${alInserted} audit logs (existing: ${existingAuditCount})`);
+
+  // ─── 9. 平台接入 (monitorPlatforms) - 2个 ──────────
+  const mpData = [
+    { name: '智能桌面运维系统', type: 'api' as const, endpoint: 'http://desktop-ops.internal/api/v1', status: 'active' as const, lastSyncAt: new Date(now - 2 * 3600000).toISOString(), description: '智能桌面运维管理平台，通过API同步设备状态和告警信息' },
+    { name: 'OA办公系统', type: 'webhook' as const, endpoint: 'http://oa.internal/webhook/monitor', status: 'testing' as const, lastSyncAt: new Date(now - 24 * 3600000).toISOString(), description: 'OA办公自动化系统，通过Webhook接收监控告警通知' },
+  ];
+  let mpInserted = 0;
+  for (const p of mpData) {
+    if (!db.select().from(schema.monitorPlatforms).where(eq(schema.monitorPlatforms.name, p.name)).get()) {
+      db.insert(schema.monitorPlatforms).values(p).run(); mpInserted++;
+    }
+  }
+  console.log(`Inserted ${mpInserted} monitor platforms`);
 }
 
 seedDemo();
