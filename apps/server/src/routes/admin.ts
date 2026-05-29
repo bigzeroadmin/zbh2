@@ -1,7 +1,7 @@
 import { FastifyInstance } from 'fastify';
 import { requireAdmin } from '../middleware/auth.js';
 import { db, schema } from '../db/index.js';
-import { eq, asc, desc, sql } from 'drizzle-orm';
+import { eq, and, asc, desc, sql } from 'drizzle-orm';
 import { hash } from 'argon2';
 import {
   softwareCategorySchema,
@@ -9,8 +9,10 @@ import {
   softwareItemSchema,
   helpDocumentSchema,
   activationProductSchema,
+  adminGrantSchema,
   createUserSchema,
 } from 'shared';
+import { logAudit } from '../middleware/audit.js';
 
 export default async function adminRoutes(app: FastifyInstance) {
   app.addHook('preHandler', requireAdmin);
@@ -136,7 +138,22 @@ export default async function adminRoutes(app: FastifyInstance) {
   // ─── Activation Products ─────────────────────────
   app.get('/api/admin/activation-products', async () => {
     const rows = db.select().from(schema.activationProducts).all();
-    return { success: true, data: rows };
+    // 统计每个产品的库存：可用 / 已发放
+    const counts = db
+      .select({
+        productId: schema.activationCodes.productId,
+        status: schema.activationCodes.status,
+        count: sql<number>`count(*)`,
+      })
+      .from(schema.activationCodes)
+      .groupBy(schema.activationCodes.productId, schema.activationCodes.status)
+      .all();
+    const data = rows.map((p) => ({
+      ...p,
+      availableCount: counts.find((c) => c.productId === p.id && c.status === 'available')?.count ?? 0,
+      grantedCount: counts.find((c) => c.productId === p.id && c.status === 'granted')?.count ?? 0,
+    }));
+    return { success: true, data };
   });
 
   app.post('/api/admin/activation-products', async (request, reply) => {
@@ -216,6 +233,86 @@ export default async function adminRoutes(app: FastifyInstance) {
       .orderBy(desc(schema.activationCodeGrants.grantedAt))
       .all();
     return { success: true, data: rows };
+  });
+
+  // 管理员手动发放：将指定产品分配给指定用户（自动从可用激活码中分配一个）
+  app.post('/api/admin/activation-grants', async (request, reply) => {
+    const parsed = adminGrantSchema.safeParse(request.body);
+    if (!parsed.success) return reply.status(400).send({ success: false, error: '请选择用户和产品' });
+    const { userId, productId } = parsed.data;
+
+    const targetUser = db.select().from(schema.users).where(eq(schema.users.id, userId)).get();
+    if (!targetUser) return reply.status(404).send({ success: false, error: '用户不存在' });
+    if (targetUser.status !== 'active') return reply.status(400).send({ success: false, error: '该用户已被禁用，无法发放' });
+
+    const product = db.select().from(schema.activationProducts).where(eq(schema.activationProducts.id, productId)).get();
+    if (!product) return reply.status(404).send({ success: false, error: '激活产品不存在' });
+
+    // 幂等：同一用户同一产品只发放一次
+    const existingGrant = db
+      .select({ id: schema.activationCodeGrants.id, code6: schema.activationCodes.code6 })
+      .from(schema.activationCodeGrants)
+      .leftJoin(schema.activationCodes, eq(schema.activationCodeGrants.codeId, schema.activationCodes.id))
+      .where(and(eq(schema.activationCodeGrants.userId, userId), eq(schema.activationCodeGrants.productId, productId)))
+      .get();
+    if (existingGrant) {
+      return reply.status(409).send({ success: false, error: `该用户已拥有「${product.name}」的激活码（${existingGrant.code6}）` });
+    }
+
+    // 从可用激活码中取一个
+    const availableCode = db
+      .select()
+      .from(schema.activationCodes)
+      .where(and(eq(schema.activationCodes.productId, productId), eq(schema.activationCodes.status, 'available')))
+      .limit(1)
+      .get();
+    if (!availableCode) {
+      return reply.status(409).send({ success: false, error: `「${product.name}」暂无可用激活码，请先批量导入` });
+    }
+
+    db.update(schema.activationCodes).set({ status: 'granted' }).where(eq(schema.activationCodes.id, availableCode.id)).run();
+    const grant = db.insert(schema.activationCodeGrants).values({
+      codeId: availableCode.id,
+      userId,
+      productId,
+    }).returning().get();
+
+    await logAudit({
+      userId: request.sessionUser!.id,
+      username: request.sessionUser!.username,
+      action: 'create',
+      targetType: 'activation',
+      targetId: String(grant.id),
+      targetName: `${targetUser.username} ← ${product.name}`,
+      detail: { userId, productId, code6: availableCode.code6 },
+      ipAddress: request.ip,
+      userAgent: request.headers['user-agent'],
+    });
+
+    return { success: true, data: { id: grant.id, code6: availableCode.code6, username: targetUser.username, productName: product.name } };
+  });
+
+  // 撤销发放：回收激活码（重新置为可用）并删除发放记录
+  app.delete('/api/admin/activation-grants/:id', async (request, reply) => {
+    const { id } = request.params as { id: string };
+    const grant = db.select().from(schema.activationCodeGrants).where(eq(schema.activationCodeGrants.id, Number(id))).get();
+    if (!grant) return reply.status(404).send({ success: false, error: '发放记录不存在' });
+
+    db.update(schema.activationCodes).set({ status: 'available' }).where(eq(schema.activationCodes.id, grant.codeId)).run();
+    db.delete(schema.activationCodeGrants).where(eq(schema.activationCodeGrants.id, grant.id)).run();
+
+    await logAudit({
+      userId: request.sessionUser!.id,
+      username: request.sessionUser!.username,
+      action: 'delete',
+      targetType: 'activation',
+      targetId: String(grant.id),
+      detail: { codeId: grant.codeId, userId: grant.userId, productId: grant.productId },
+      ipAddress: request.ip,
+      userAgent: request.headers['user-agent'],
+    });
+
+    return { success: true };
   });
 
   // ─── Users Management ────────────────────────────
