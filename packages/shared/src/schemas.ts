@@ -48,3 +48,9 @@ export const activationProductSchema = z.object({
 export const claimCodeSchema = z.object({
   productId: z.number().int().positive(),
 });
+
+// 管理员手动发放：将指定产品分配给指定用户
+export const adminGrantSchema = z.object({
+  userId: z.number().int().positive(),
+  productId: z.number().int().positive(),
+});
